@@ -1127,6 +1127,25 @@ pub mod os {
         }
     }
 
+    struct AbortOnErrGuard<R> {
+        catch_res: crate::thread::Result<R>,
+    }
+
+    impl<R> AbortOnErrGuard<R> {
+        fn catch_unwind<F: FnOnce() -> R + crate::panic::UnwindSafe>(f: F) {
+            AbortOnErrGuard { catch_res: crate::panic::catch_unwind(f) };
+        }
+    }
+
+    impl<R> Drop for AbortOnErrGuard<R> {
+        fn drop(&mut self) {
+            if self.catch_res.is_err() {
+                crate::panic::always_abort();
+                panic!("destruction of a thread local value");
+            }
+        }
+    }
+
     unsafe extern "C" fn destroy_value<T: 'static>(ptr: *mut u8) {
         // SAFETY:
         //
@@ -1137,16 +1156,12 @@ pub mod os {
         //
         // Note that to prevent an infinite loop we reset it back to null right
         // before we return from the destructor ourselves.
-        if let Err(_) = crate::panic::catch_unwind(|| unsafe {
+        AbortOnErrGuard::catch_unwind(|| unsafe {
             let ptr = Box::from_raw(ptr as *mut Value<T>);
             let key = ptr.key;
             key.os.set(ptr::invalid_mut(1));
             drop(ptr);
             key.os.set(ptr::null_mut());
-        })
-        {
-            crate::panic::always_abort();
-            panic!("destruction of a thread local value");
-        }
+        });
     }
 }
