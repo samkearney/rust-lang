@@ -1137,12 +1137,16 @@ pub mod os {
         //
         // Note that to prevent an infinite loop we reset it back to null right
         // before we return from the destructor ourselves.
-        unsafe {
+        if let Err(_) = crate::panic::catch_unwind(|| unsafe {
             let ptr = Box::from_raw(ptr as *mut Value<T>);
             let key = ptr.key;
             key.os.set(ptr::invalid_mut(1));
             drop(ptr);
             key.os.set(ptr::null_mut());
+        })
+        {
+            crate::panic::always_abort();
+            panic!("destruction of a thread local value");
         }
     }
 }
