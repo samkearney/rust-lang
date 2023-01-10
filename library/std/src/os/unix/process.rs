@@ -12,15 +12,20 @@ use crate::sealed::Sealed;
 use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
-#[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))]
-type UserId = u32;
-#[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))]
-type GroupId = u32;
+use cfg_if::cfg_if;
 
-#[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon"))]
-type UserId = u16;
-#[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon"))]
-type GroupId = u16;
+cfg_if! {
+    if #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon"))] {
+        type UserId = u16;
+        type GroupId = u16;
+    } else if #[cfg(target_os = "nto")] {
+        type UserId = i32;
+        type GroupId = i32;
+    } else {
+        type UserId = u32;
+        type GroupId = u32;
+    }
+}
 
 /// Unix-specific extensions to the [`process::Command`] builder.
 ///

@@ -26,7 +26,11 @@ fn main() {
         thread::sleep_ms(5000);
         process::exit(1);
     });
-    let output = process::Command::new("sh").arg("-c").arg("yes | head").output().unwrap();
+    #[cfg(not(target_os = "nto"))]
+    let command = "yes | head";
+    #[cfg(target_os = "nto")]
+    let command = "awk 'BEGIN {while (1) print yes}' | awk 'BEGIN {exit}'";
+    let output = process::Command::new("sh").arg("-c").arg(command).output().unwrap();
     assert!(output.status.success());
     assert!(output.stderr.len() == 0);
 }

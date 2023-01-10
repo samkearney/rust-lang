@@ -62,6 +62,7 @@ extern "C" {
         link_name = "__errno"
     )]
     #[cfg_attr(any(target_os = "solaris", target_os = "illumos"), link_name = "___errno")]
+    #[cfg_attr(any(target_os = "nto"), link_name = "__get_errno_ptr")]
     #[cfg_attr(
         any(target_os = "macos", target_os = "ios", target_os = "freebsd", target_os = "watchos"),
         link_name = "__error"
@@ -359,6 +360,14 @@ pub fn current_exe() -> io::Result<PathBuf> {
         )),
         other => other,
     }
+}
+
+#[cfg(target_os = "nto")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    let mut e = crate::fs::read("/proc/self/exefile")?;
+    // e ends with a null byte, remove it
+    e.pop();
+    Ok(PathBuf::from(OsString::from_vec(e)))
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
